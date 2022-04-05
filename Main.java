@@ -3,19 +3,39 @@ package battleship;
 
 import java.util.*;
 
-public class Main {
 
+class Battlefield {
     /**
      * The field with ships
      */
-    private static final boolean[][] field = new boolean[10][10];
+    private final boolean[][] field = new boolean[10][10];
 
     /**
      * Hits and misses
      */
-    private static final boolean[][] shots = new boolean[10][10];
+    private final boolean[][] shots = new boolean[10][10];
 
-    private static char[][] fullField = new char[10][10];
+    private final char[][] fullField = new char[10][10];
+
+    private int shipsSunkNumber = 0;
+
+    private final String owner;
+
+    /**
+     * Get owner name
+     * @return - owner name
+     */
+    public String getOwner() {
+        return owner;
+    }
+
+    /**
+     * Constructor
+     * @param owner - owner name
+     */
+    public Battlefield(String owner) {
+        this.owner = owner;
+    }
 
     /**
      * Different ship types and their sizes
@@ -50,13 +70,24 @@ public class Main {
 
 
     /**
+     * Increase count of ships sunk by one
+     */
+    public void increaseShipSunkNumber() {
+        shipsSunkNumber++;
+    }
+
+    public int getShipsSunkNumber() {
+        return shipsSunkNumber;
+    }
+
+    /**
      * Check whether coordinates are valid
      * @param noseCoord - nose coordinates
      * @param tailCoord - tail coordinates
      * @param st - ship type
      * @return - flag
      */
-    public static boolean areCoordinatesValid(String[] noseCoord, String[] tailCoord, ShipType st) {
+    public boolean areCoordinatesValid(String[] noseCoord, String[] tailCoord, ShipType st) {
         try {
 
             if (noseCoord.length < 2 || tailCoord.length < 2) {
@@ -103,7 +134,7 @@ public class Main {
         return true;
     }
 
-    public static boolean isPlacementValid(String[] nose, String[] tail, ShipType st) {
+    public boolean isPlacementValid(String[] nose, String[] tail, ShipType st) {
 
         if(!areCoordinatesValid(nose, tail, st)) {
             return false;
@@ -136,7 +167,7 @@ public class Main {
      * Print the field with ships placed
      * @param fogOfWar - fog of war flag
      */
-    public static void printField(boolean fogOfWar) {
+    public void printField(boolean fogOfWar) {
         System.out.println();
 
         for (int i = - 1; i < field.length; i++) {
@@ -162,18 +193,12 @@ public class Main {
     }
 
 
-    public static boolean checkShip(int row, int column) {
-
-
-        return false;
-    }
-
     /**
      * Place a ship
      * @param coordinates - nose and tail coordinates
      * @param st - ship type
      */
-    public static boolean placeShip(String coordinates, ShipType st) {
+    public boolean placeShip(String coordinates, ShipType st) {
 
         String[] coordArray = coordinates.split("\\s+");
         if (coordArray.length != 2) {
@@ -216,11 +241,11 @@ public class Main {
      * @param second - second coordinate
      * @return flag
      */
-    public static boolean isGreater(String[] first, String[] second) {
-         if (first[0].charAt(0) < second[0].charAt(0)) {
-             return true;
-         } else return first[0].charAt(0) == second[0].charAt(0)
-                 && Integer.parseInt(first[1]) < Integer.parseInt(second[1]);
+    public boolean isGreater(String[] first, String[] second) {
+        if (first[0].charAt(0) < second[0].charAt(0)) {
+            return true;
+        } else return first[0].charAt(0) == second[0].charAt(0)
+                && Integer.parseInt(first[1]) < Integer.parseInt(second[1]);
     }
 
     /**
@@ -228,7 +253,7 @@ public class Main {
      * @param shot - shot coordinates
      * @return - is the ship hit
      */
-    public static boolean takeAShot(String shot) throws Exception {
+    public boolean takeAShot(String shot) throws Exception {
 
         try {
             String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
@@ -250,9 +275,9 @@ public class Main {
     /**
      * Check if the ship is sunk
      * @param shot - shot coordinates
-     * @return
+     * @return - number of ships sunk
      */
-    private static boolean isShipSunk(String shot) {
+    public boolean isShipSunk(String shot) {
 
         String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
         int row = coord[0].charAt(0) - (int) 'A';
@@ -290,15 +315,55 @@ public class Main {
     /**
      * Check if the point was already shot at
      * @param shot - coordinates of a shot
-     * @return
+     * @return - flag
      */
-    private static boolean wasShotAlready(String shot) {
+    public boolean wasShotAlready(String shot) {
         String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
         int row = coord[0].charAt(0) - (int) 'A';
         int column = Integer.parseInt(coord[1]) - 1;
 
         return shots[row][column];
     }
+}
+
+class Game {
+    List<Battlefield> battlefieldList;
+    int currentPlayerNumber;
+
+    int playerCount;
+
+    public Game(Battlefield b1, Battlefield b2) {
+        battlefieldList = new ArrayList<>();
+        battlefieldList.add(b1);
+        battlefieldList.add(b2);
+        currentPlayerNumber = 0;
+        playerCount = battlefieldList.size();
+    }
+
+    public void switchPlayer() {
+        currentPlayerNumber = (currentPlayerNumber == 0 ? 1 : 0);
+    }
+
+    public Battlefield getCurrentBattlefield() {
+        return battlefieldList.get(currentPlayerNumber);
+    }
+
+    public int getPlayerCount() {
+        return playerCount;
+    }
+
+    public Battlefield getEnemyBattlefield() {
+        int enemyNum = (currentPlayerNumber == 0 ? 1 : 0);
+        return battlefieldList.get(enemyNum);
+    }
+
+    public boolean isGameNotFinished() {
+        return (battlefieldList.get(0).getShipsSunkNumber() < 5
+                && battlefieldList.get(1).getShipsSunkNumber() < 5);
+    }
+}
+
+public class Main {
 
     /**
      * The game
@@ -306,63 +371,96 @@ public class Main {
      */
     public static void main(String[] args) {
         // Write your code here
-        printField(false);
+
+        Battlefield yours = new Battlefield("Player 1");
+        Battlefield enemy = new Battlefield("Player 2");
+
+        Game game = new Game(yours, enemy);
+
+        List<Battlefield.ShipType> shipList
+                = new ArrayList<>(Arrays.asList(Battlefield.ShipType.AIRCRAFT_CARRIER
+                                                                            , Battlefield.ShipType.BATTLESHIP
+                                                                            , Battlefield.ShipType.SUBMARINE
+                                                                            , Battlefield.ShipType.CRUISER
+                                                                            , Battlefield.ShipType.DESTROYER));
 
         Scanner sc = new Scanner(System.in);
 
-        List<ShipType> shipList = new ArrayList<>(Arrays.asList(ShipType.AIRCRAFT_CARRIER, ShipType.BATTLESHIP
-                                                                , ShipType.SUBMARINE, ShipType.CRUISER
-                                                                , ShipType.DESTROYER));
+        //place the ships for both players
+        int i = 0;
 
-        //place the ships
-        for (ShipType ship: shipList) {
-            System.out.printf("Enter the coordinates of the %s: ", ship.getFullName());
+        while (i < game.getPlayerCount()) {
 
-            boolean isSet = false;
-            while (!isSet) {
-                String coord = sc.nextLine();
-                isSet = placeShip(coord, ship);
+            Battlefield current = game.getCurrentBattlefield();
+
+            System.out.printf("%s, place your ships to the game field", current.getOwner());
+            current.printField(false);
+
+            //place the ships
+            for (Battlefield.ShipType ship : shipList) {
+                System.out.printf("Enter the coordinates of the %s: ", ship.getFullName());
+
+                boolean isSet = false;
+                while (!isSet) {
+                    String coord = sc.nextLine();
+                    isSet = current.placeShip(coord, ship);
+                }
+                current.printField(false);
             }
-            printField(false);
+
+            //pass the move to the other player
+            System.out.println("Press Enter and pass the move to another player\n...");
+            sc.nextLine();
+            i++;
+            game.switchPlayer();
         }
 
         //war!
-        System.out.println("The game starts!");
-        printField(true);
-        System.out.println("Take a shot!");
+        while (game.isGameNotFinished()) {
+            Battlefield current = game.getCurrentBattlefield();
+            Battlefield foe = game.getEnemyBattlefield();
+            foe.printField(true);
+            System.out.println("---------------------");
+            current.printField(false);
+            System.out.printf("%s, it's your turn:\n", current.getOwner());
 
-        int shipSunkNumber = 0;
-
-        while (shipSunkNumber < 5) {
             try {
                 String shot = sc.nextLine();
 
-                boolean wasShot = wasShotAlready(shot);
-                boolean isHit = takeAShot(shot);
-
-                printField(true);
+                boolean wasShot = foe.wasShotAlready(shot);
+                boolean isHit = foe.takeAShot(shot);
 
                 if (isHit) {
-                    if (isShipSunk(shot) && !wasShot) {
-                        shipSunkNumber++;
-                        System.out.println(shipSunkNumber != 5 ? "You sank a ship! Specify a new target:" : "");
+                    if (foe.isShipSunk(shot) && !wasShot) {
+                        foe.increaseShipSunkNumber();
+                        System.out.println(foe.getShipsSunkNumber() != 5
+                                ? "You sank a ship!" + foe.getShipsSunkNumber()
+                                : "You hit a ship!");
                     } else {
-                        System.out.println("You hit a ship! Try again:");
+                        System.out.println("You hit a ship!");
                     }
 
                 } else {
-                    System.out.println("You missed! Try again:");
+                    System.out.println("You missed!");
+                }
+
+                //pass the move to the other player
+                if (game.isGameNotFinished()) {
+                    System.out.println("Press Enter and pass the move to another player\n...");
+                    sc.nextLine();
+
+                    game.switchPlayer();
                 }
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage() + " Try again: ");
             }
+
+
         }
 
-        if (shipSunkNumber == 5) {
-            System.out.println("You sank the last ship. You won. Congratulations!");
-        }
-
+        //congratulations!
+        System.out.println("You sank the last ship. You won. Congratulations!");
 
     }
 }
