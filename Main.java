@@ -3,8 +3,74 @@ package battleship;
 
 import java.util.*;
 
+/**
+ * Different ship types and their sizes
+ */
+enum ShipType {
+    AIRCRAFT_CARRIER(5),
+    BATTLESHIP(4),
+    SUBMARINE(3),
+    CRUISER(3),
+    DESTROYER(2);
+
+    final int size;
+
+    ShipType(int size) {
+        this.size = size;
+    }
+
+    int getSize() {
+        return this.size;
+    }
+
+    String getName() {
+        String str = this.name().replaceAll("_", " ");
+        return str.charAt(0) + str.substring(1).toLowerCase();
+    }
+
+    String getFullName() {
+        return String.format("%s (%d cells)", this.getName(), this.getSize());
+    }
+
+}
+
 
 class Battlefield {
+
+    class Ship {
+        ShipType type;
+
+        int health;
+        int noseX;
+        int noseY;
+        int tailX;
+        int tailY;
+
+
+        Ship(ShipType type, int health, int noseX, int noseY, int tailX, int tailY) {
+            this.type = type;
+            this.health = health;
+            this.noseX = noseX;
+            this.noseY = noseY;
+            this.tailX = tailX;
+            this.tailY = tailY;
+        }
+
+        public int getHealth() {
+            int health = 0;
+            for (int i = noseX; i <= tailX ; i++) {
+                for (int j = noseY; j <= tailY ; j++) {
+                    if (fullField[i][j] == 'O') {
+                        health++;
+                    }
+                }
+            }
+            this.health = health;
+            return health;
+        }
+
+    }
+
     /**
      * The field with ships
      */
@@ -17,7 +83,9 @@ class Battlefield {
 
     private final char[][] fullField = new char[10][10];
 
-    private int shipsSunkNumber = 0;
+//    private int shipsSunkNumber = 0;
+
+    private final List<Ship> shipList = new ArrayList<>();
 
     private final String owner;
 
@@ -38,45 +106,32 @@ class Battlefield {
     }
 
     /**
-     * Different ship types and their sizes
+     * Find out which ship was hit
+     * @param shot - shot coordinates
+     * @return - ship that was shot
      */
-    enum ShipType {
-        AIRCRAFT_CARRIER(5),
-        BATTLESHIP(4),
-        SUBMARINE(3),
-        CRUISER(3),
-        DESTROYER(2);
+    public Ship findShipByPoint (String shot) {
+        String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
+        int row = coord[0].charAt(0) - (int) 'A';
+        int column = Integer.parseInt(coord[1]) - 1;
 
-        final int size;
-
-        ShipType(int size) {
-            this.size = size;
+        for (Ship s : shipList) {
+            if (row <= s.tailX && row >= s.noseX
+                && column <= s.tailY && column >= s.noseY) {
+                return s;
+            }
         }
-
-        int getSize() {
-            return this.size;
-        }
-
-        String getName() {
-            String str = this.name().replaceAll("_", " ");
-            return str.charAt(0) + str.substring(1).toLowerCase();
-        }
-
-        String getFullName() {
-            return String.format("%s (%d cells)", this.getName(), this.getSize());
-        }
-
+        return null;
     }
 
-
-    /**
-     * Increase count of ships sunk by one
-     */
-    public void increaseShipSunkNumber() {
-        shipsSunkNumber++;
-    }
 
     public int getShipsSunkNumber() {
+        int shipsSunkNumber = 0;
+        for (Ship s : shipList) {
+            if (s.health == 0) {
+                shipsSunkNumber++;
+            }
+        }
         return shipsSunkNumber;
     }
 
@@ -222,6 +277,8 @@ class Battlefield {
             int tailX = tailCoord[0].charAt(0) - (int)'A';
             int tailY = Integer.parseInt(tailCoord[1]) - 1;
 
+            shipList.add(new Ship(st, st.getSize(), noseX, noseY, tailX, tailY));
+
             for (int i = noseX; i <= tailX; i++) {
                 for (int j = noseY; j <= tailY; j++) {
                     field[i][j] = true;
@@ -271,59 +328,6 @@ class Battlefield {
 
     }
 
-
-    /**
-     * Check if the ship is sunk
-     * @param shot - shot coordinates
-     * @return - number of ships sunk
-     */
-    public boolean isShipSunk(String shot) {
-
-        String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
-        int row = coord[0].charAt(0) - (int) 'A';
-        int column = Integer.parseInt(coord[1]) - 1;
-
-        List<List<Integer>> nearbyPoints = new ArrayList<>();
-
-        if (row > 0 && row < fullField.length - 1) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row - 1, column)));
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row + 1, column)));
-        } else if (row == 0) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row + 1, column)));
-        } else if (row == fullField.length - 1) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row - 1, column)));
-        }
-
-        if (column > 0 && column < fullField[0].length - 1) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row, column - 1)));
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row, column + 1)));
-        } else if (column == 0) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row, column + 1)));
-        } else if (column == fullField[0].length - 1) {
-            nearbyPoints.add(new ArrayList<>(Arrays.asList(row, column - 1)));
-        }
-
-        for (List<Integer> point : nearbyPoints) {
-            if (fullField[point.get(0)][point.get(1)] == 'O') {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if the point was already shot at
-     * @param shot - coordinates of a shot
-     * @return - flag
-     */
-    public boolean wasShotAlready(String shot) {
-        String[] coord = new String[]{shot.substring(0, 1), shot.substring(1)};
-        int row = coord[0].charAt(0) - (int) 'A';
-        int column = Integer.parseInt(coord[1]) - 1;
-
-        return shots[row][column];
-    }
 }
 
 class Game {
@@ -377,12 +381,12 @@ public class Main {
 
         Game game = new Game(yours, enemy);
 
-        List<Battlefield.ShipType> shipList
-                = new ArrayList<>(Arrays.asList(Battlefield.ShipType.AIRCRAFT_CARRIER
-                                                                            , Battlefield.ShipType.BATTLESHIP
-                                                                            , Battlefield.ShipType.SUBMARINE
-                                                                            , Battlefield.ShipType.CRUISER
-                                                                            , Battlefield.ShipType.DESTROYER));
+        List<ShipType> shipList
+                = new ArrayList<>(Arrays.asList(ShipType.AIRCRAFT_CARRIER
+                                                , ShipType.BATTLESHIP
+                                                , ShipType.SUBMARINE
+                                                , ShipType.CRUISER
+                                                , ShipType.DESTROYER));
 
         Scanner sc = new Scanner(System.in);
 
@@ -397,7 +401,7 @@ public class Main {
             current.printField(false);
 
             //place the ships
-            for (Battlefield.ShipType ship : shipList) {
+            for (ShipType ship : shipList) {
                 System.out.printf("Enter the coordinates of the %s: ", ship.getFullName());
 
                 boolean isSet = false;
@@ -427,15 +431,12 @@ public class Main {
             try {
                 String shot = sc.nextLine();
 
-                boolean wasShot = foe.wasShotAlready(shot);
                 boolean isHit = foe.takeAShot(shot);
 
                 if (isHit) {
-                    if (foe.isShipSunk(shot) && !wasShot) {
-                        foe.increaseShipSunkNumber();
-                        System.out.println(foe.getShipsSunkNumber() != 5
-                                ? "You sank a ship!" + foe.getShipsSunkNumber()
-                                : "You hit a ship!");
+                    Battlefield.Ship s = foe.findShipByPoint(shot);
+                    if (s.getHealth() == 0) {
+                        System.out.println("You sank a ship!");
                     } else {
                         System.out.println("You hit a ship!");
                     }
